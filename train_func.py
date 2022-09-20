@@ -78,10 +78,7 @@ def train(
         pass
 
 
-def evaluate(model, loader, show_progress=True):
-    total_number = 0
-    correct_number = 0
-    total_val_loss = 0
+def evaluate(model, loader, metric, show_progress=True):
     model.eval()
     valid_iter = iter(loader)
     num_steps_per_epoch = len(loader)
@@ -97,13 +94,7 @@ def evaluate(model, loader, show_progress=True):
                 val_loss, logits = outputs[:2]
                 preds = torch.argmax(logits, dim=-1)
                 labels = batch["labels"]
-
-                step_total = preds.size(0)
-                step_correct = torch.sum(preds == labels).item()
-
-                total_number += float(step_total)
-                correct_number += float(step_correct)
-                total_val_loss += val_loss.item()
+                metric.add_batch(predictions=preds, references=labels)
 
     try:
         while True:
@@ -111,9 +102,10 @@ def evaluate(model, loader, show_progress=True):
     except StopIteration:
         pass
 
-    trans_buffer = torch.tensor([correct_number, total_number, total_val_loss],
-                                device=get_current_device())
+    score = metric.compute()
+    float_buffer = [score['accuracy'], score['f1']]
+    trans_buffer = torch.tensor(float_buffer, device=get_current_device())
     dist.all_reduce(trans_buffer)
-    percent = trans_buffer[0] / trans_buffer[1]
-    total_val_loss = trans_buffer[2] / num_steps_per_epoch / dist.get_world_size()
-    return percent, total_val_loss
+    percent = trans_buffer[0] / dist.get_world_size()
+    f1 = trans_buffer[1] / dist.get_world_size()
+    return percent, f1

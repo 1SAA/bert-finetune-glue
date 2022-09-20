@@ -18,12 +18,12 @@ from argparse import ArgumentParser
 import colossalai
 from colossalai.nn.optimizer import HybridAdam
 from colossalai.logging import disable_existing_loggers, get_dist_logger
-from colossalai.gemini.update import ChunkManagerV2, search_chunk_configuration
-from colossalai.gemini import GeminiManager
+from colossalai.gemini import GeminiManager, ChunkManager
 from colossalai.utils.model.colo_init_context import ColoInitContext
 from colossalai.utils import get_current_device
 from colossalai.nn.parallel import ZeroDDP
-from colossalai.zero.zero_optimv2 import ZeroOptimizerV2
+from colossalai.zero import ZeroOptimizer
+from colossalai.tensor import ProcessGroup
 
 if __name__ == '__main__':
     disable_existing_loggers()
@@ -73,22 +73,11 @@ if __name__ == '__main__':
     logger.info(f'Model numel: {numel}', ranks=[0])
     logger.info(get_mem_info(), ranks=[0])
 
-    dist.barrier()
-    begin = time()
-    config_dict = search_chunk_configuration(
-        model=model,
-        search_range_mb=64,
-        search_interval_byte=768,
-        filter_exlarge_params=True
-    )
-    dist.barrier()
-    span = time() - begin
-    logger.info("The time of searching the chunk size is {:.3f} s.".format(span), ranks=[0])
-
-    chunk_manager = ChunkManagerV2(config_dict)
+    pg = ProcessGroup()
+    chunk_size = ChunkManager.search_chunk_size(model, 128 * 1024 ** 2, 1024, filter_exlarge_params=True)
+    chunk_manager = ChunkManager(chunk_size, pg, enable_distributed_storage=True)
     gemini_manager = GeminiManager('cuda', chunk_manager)
-    model = ZeroDDP(model, gemini_manager, pin_memory=False)
-    criterion = torch.nn.CrossEntropyLoss()
+    model = ZeroDDP(model, gemini_manager)
     # logger.info(chunk_manager, ranks=[0])
 
     logger.info("Optimizer is creating now.", ranks=[0])
@@ -109,7 +98,7 @@ if __name__ == '__main__':
         lr=args.lr,
         eps=1e-8
     )
-    optimizer = ZeroOptimizerV2(optimizer, model, initial_scale=32)
+    optimizer = ZeroOptimizer(optimizer, model, initial_scale=32)
 
     logger.info("Dataloder is creating now.", ranks=[0])
     train_loader, train_sampler = dm.train_loader_and_sampler()
