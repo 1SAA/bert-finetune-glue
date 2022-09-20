@@ -62,6 +62,7 @@ def train(
         output_loss = outputs[0]
         step_loss = output_loss.item()
         optimizer.backward(output_loss)
+        # output_loss.backward()
         optimizer.step()
         return step_loss
 
@@ -103,9 +104,4 @@ def evaluate(model, loader, metric, show_progress=True):
         pass
 
     score = metric.compute()
-    float_buffer = [score['accuracy'], score['f1']]
-    trans_buffer = torch.tensor(float_buffer, device=get_current_device())
-    dist.all_reduce(trans_buffer)
-    percent = trans_buffer[0] / dist.get_world_size()
-    f1 = trans_buffer[1] / dist.get_world_size()
-    return percent, f1
+    return score['accuracy'], score['f1']

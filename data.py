@@ -81,15 +81,14 @@ class GLUEDataModule:
 
     def train_loader_and_sampler(self):
         train_set = self.dataset["train"]
-        train_sampler = DistributedSampler(train_set, shuffle=True, drop_last=True)
+        train_sampler = DistributedSampler(train_set, shuffle=True)
         train_loader = DataLoader(train_set, self.train_batch_size, sampler=train_sampler)
         return train_loader, train_sampler
 
     def val_loader_and_sampler(self):
         valid_set = self.dataset["validation"]
-        valid_sampler = DistributedSampler(valid_set, shuffle=False, drop_last=True)
-        valid_loader = DataLoader(valid_set, self.eval_batch_size, sampler=valid_sampler)
-        return valid_loader, valid_sampler
+        valid_loader = DataLoader(valid_set, self.eval_batch_size)
+        return valid_loader
 
     def convert_to_features(self, example_batch, indices=None):
 

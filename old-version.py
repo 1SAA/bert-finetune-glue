@@ -54,7 +54,7 @@ if __name__ == '__main__':
     dm = GLUEDataModule(
         model_name_or_path=model_name,
         task_name=args.task,
-        train_batch_size=global_batch_size,
+        train_batch_size=local_batch_size,
         eval_batch_size=global_batch_size
     )
     dm.setup("fit")
@@ -102,7 +102,7 @@ if __name__ == '__main__':
 
     logger.info("Dataloder is creating now.", ranks=[0])
     train_loader, train_sampler = dm.train_loader_and_sampler()
-    valid_loader, valid_sampler = dm.val_loader_and_sampler()
+    valid_loader = dm.val_loader_and_sampler()
 
     logger.info("Learning rate scheduler is creating now.", ranks=[0])
     num_epoch = args.epochs
