@@ -74,7 +74,7 @@ if __name__ == '__main__':
     logger.info(get_mem_info(), ranks=[0])
 
     pg = ProcessGroup()
-    chunk_size = ChunkManager.search_chunk_size(model, 128 * 1024 ** 2, 1024, filter_exlarge_params=True)
+    chunk_size = ChunkManager.search_chunk_size(model, 64 * 1024 ** 2, 1024, filter_exlarge_params=True)
     chunk_manager = ChunkManager(chunk_size, pg, enable_distributed_storage=True)
     gemini_manager = GeminiManager('cuda', chunk_manager)
     model = ZeroDDP(model, gemini_manager)
@@ -109,10 +109,10 @@ if __name__ == '__main__':
     steps_per_epoch = len(train_loader)
     num_all_steps = num_epoch * steps_per_epoch
     num_warm_steps = int(num_all_steps * args.warmup_fraction)
-    lr_scheduler = LinearWarmupLR(
+    lr_scheduler = get_linear_schedule_with_warmup(
         optimizer=optimizer,
-        total_steps=num_all_steps,
-        warmup_steps=num_warm_steps
+        num_warmup_steps=num_warm_steps,
+        num_training_steps=num_all_steps
     )
 
     for epoch in range(num_epoch):
