@@ -45,7 +45,7 @@ if __name__ == '__main__':
     global_batch_size = args.batch_size
     local_batch_size = args.batch_size // world_size
 
-    global_seed = 42
+    global_seed = 1145
     seed_all(global_seed)
     logger.info("Random is set to {} in all processes.".format(global_seed), ranks=[0])
 
